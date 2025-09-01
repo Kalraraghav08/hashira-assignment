@@ -1,27 +1,9 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-
-long long baseToDecimal(string value, int base) {
-    long long result = 0;
-    for (char c : value) {
-        int digit;
-        if (isdigit(c)) digit = c - '0';
-        else if (isalpha(c)) digit = tolower(c) - 'a' + 10; // for hex, base>10
-        else continue;
-        result = result * base + digit;
-    }
-    return result;
-}
-
-
-vector<long long> multiplyPoly(vector<long long> poly, long long root) {
-    vector<long long> newPoly(poly.size() + 1, 0);
-    for (size_t i = 0; i < poly.size(); i++) {
-        newPoly[i] += poly[i];
-        newPoly[i + 1] -= poly[i] * root;
-    }
-    return newPoly;
+// Function to convert string "val" of given base to decimal integer
+long long convertToDecimal(string val, int base) {
+    return stoll(val, nullptr, base);
 }
 
 int main() {
@@ -29,61 +11,58 @@ int main() {
     cin.tie(nullptr);
 
     string line, json;
-    while (getline(cin, line)) {
-        json += line;
-    }
+    while (getline(cin, line)) json += line;  // read full JSON file as string
 
-    // Extract n and k
-    int n, k;
+    // Find "n" and "k"
+    int n = 0, k = 0;
     {
         size_t posN = json.find("\"n\"");
-        size_t colonN = json.find(":", posN);
-        n = stoi(json.substr(colonN + 1));
-
+        if (posN != string::npos) {
+            size_t colon = json.find(":", posN);
+            n = stoi(json.substr(colon + 1));
+        }
         size_t posK = json.find("\"k\"");
-        size_t colonK = json.find(":", posK);
-        k = stoi(json.substr(colonK + 1));
+        if (posK != string::npos) {
+            size_t colon = json.find(":", posK);
+            k = stoi(json.substr(colon + 1));
+        }
     }
 
-    // Extract roots
     vector<long long> roots;
-    for (int i = 1; i <= n; i++) {
-        string key = "\"" + to_string(i) + "\"";
-        size_t pos = json.find(key);
-        if (pos == string::npos) continue;
+    size_t pos = 0;
+    while (true) {
+        size_t basePos = json.find("\"base\"", pos);
+        if (basePos == string::npos) break;
+        size_t colon1 = json.find(":", basePos);
+        size_t comma1 = json.find(",", colon1);
+        int base = stoi(json.substr(colon1 + 1, comma1 - colon1 - 1));
 
-        // Base
-        size_t posBase = json.find("\"base\"", pos);
-        size_t colonBase = json.find(":", posBase);
-        int base = stoi(json.substr(colonBase + 1));
-
-        // Value
-        size_t posValue = json.find("\"value\"", pos);
-        size_t colonValue = json.find(":", posValue);
-        size_t quote1 = json.find("\"", colonValue + 1);
+        size_t valPos = json.find("\"value\"", comma1);
+        size_t colon2 = json.find(":", valPos);
+        size_t quote1 = json.find("\"", colon2);
         size_t quote2 = json.find("\"", quote1 + 1);
-        string value = json.substr(quote1 + 1, quote2 - quote1 - 1);
+        string val = json.substr(quote1 + 1, quote2 - quote1 - 1);
 
-        long long decimalRoot = baseToDecimal(value, base);
-        roots.push_back(decimalRoot);
+        long long num = convertToDecimal(val, base);
+        roots.push_back(num);
+
+        pos = quote2;
     }
 
-    // Degree of polynomial = k-1
-    int degree = k - 1;
-
-    // Use first (k-1) roots
-    vector<long long> poly = {1}; // start with P(x) = 1
-    for (int i = 0; i < degree; i++) {
-        poly = multiplyPoly(poly, roots[i]);
+    // Polynomial expansion
+    vector<long long> poly = {1}; // start with constant polynomial "1"
+    for (long long root : roots) {
+        vector<long long> newPoly(poly.size() + 1, 0);
+        for (size_t i = 0; i < poly.size(); i++) {
+            newPoly[i] += -root * poly[i];
+            newPoly[i + 1] += poly[i];
+        }
+        poly = newPoly;
     }
 
     // Print coefficients
-    // Example: x^2 - 11x + 28 → 1 -11 28
     for (size_t i = 0; i < poly.size(); i++) {
-        cout << poly[i];
-        if (i + 1 < poly.size()) cout << " ";
+        cout << poly[i] << (i + 1 == poly.size() ? '\n' : ' ');
     }
-    cout << "\n";
-
     return 0;
 }
